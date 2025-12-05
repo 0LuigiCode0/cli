@@ -1,0 +1,10 @@
+package sys
+
+const (
+	IsC  = 0x01
+	F1   = 0x02
+	F2   = 0x04
+	F3   = 0x08
+	F4   = 0x10
+	FOut = 0x100
+)

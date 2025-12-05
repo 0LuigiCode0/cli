@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"hash/crc32"
 	"os"
+	"syscall"
 	"time"
+
+	"github.com/0LuigiCode0/CLI/internal/c"
+	"github.com/0LuigiCode0/CLI/internal/utils/union"
 )
 
 // Event обьект событий
@@ -122,34 +126,27 @@ func (e *Event) listen(ctx context.Context, w IWindow) {
 	t := time.NewTicker(fct)
 	defer t.Stop()
 
-	mode, err := getConsoleMode(os.Stdin.Fd())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer setConsoleMode(os.Stdin.Fd(), mode)
-
-	setConsoleMode(os.Stdin.Fd(), ENABLE_PROCESSED_INPUT|ENABLE_MOUSE_INPUT)
-
-	enableMouseTracking()
-	defer disableMouseTracking()
-
-	buf := make([]byte, 128)
+	buf := make([]c.InputRecord, 2)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			n, err := os.Stdin.Read(buf)
-			if err == nil {
-				fmt.Println(buf[:n])
-				// if key, ok := keyList[hash(buf)]; ok {
-				// 	if l := w.getLayout(); l != nil {
-				// 		l.callEvent(key)
-				// 	}
-				// }
+			n, err := c.ReadConsoleInput(syscall.Stdin, &buf[0], 2)
+			if err != nil {
+				os.Stdout.WriteString(err.Error())
+				continue
 			}
-			// os.Stdin.Write([]byte("\033[6n"))
+			for i := range n {
+				switch buf[i].EventType {
+				case c.KEY_EVENT:
+					fmt.Printf("Key %+v\n", union.Get[c.KeyEvent](&buf[i].Event))
+				case c.MOUSE_EVENT:
+					fmt.Printf("Mouse %+v\n", union.Get[c.MouseEvent](&buf[i].Event))
+				case c.WINDOW_BUFFER_SIZE_EVENT:
+					fmt.Printf("Size %+v\n", union.Get[c.SizeEvent](&buf[i].Event))
+				}
+			}
 		}
 	}
 }

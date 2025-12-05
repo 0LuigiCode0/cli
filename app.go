@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"os/signal"
+
+	"github.com/0LuigiCode0/CLI/internal/term"
 )
 
 // App главный обьект приложения
@@ -46,14 +48,16 @@ func InitApp(layout ILayout) (App, error) {
 func (a *app) Start() {
 	ctx, _ := signal.NotifyContext(context.Background(),
 		os.Kill, os.Interrupt)
-	//	go a.w.reView(ctx)
-	// go a.w.reSize(ctx)
-	termClear()
+	err := term.Begin()
+	defer term.End()
+
+	if err != nil {
+		panic(err)
+	}
 
 	go a.e.listen(ctx, a.w)
 
 	<-ctx.Done()
-	termReset()
 }
 
 // GetValue получить обьект окна
